@@ -1,22 +1,35 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta name="viewport" content="width=device-width">
   <title>RealtimeAPI trial</title>
   <!-- reference to the OpenAI realtime API
     https://platform.openai.com/docs/guides/realtime-webrtc
   -->
+  <!-- TODO
+    - [ ] add sound when connected/disconnected
+    - [x] add status message
+    - [x] add API key input
+    - [x] get API key from query parameter
+    - [ ] add voice selection
+    - [ ] add timeout for keeping connection
+    - [ ] add datachannel event handler
+   -->
   <script src="env/config.js"></script>
+  <script src="js/ui_helper.js"></script>
   <script>
-    async function getEphemeralKey() {
+    async function getEphemeralKey(apiKey) {
       const r = await fetch("https://api.openai.com/v1/realtime/sessions", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${API_KEY}`,
+          "Authorization": `Bearer ${apiKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           model: "gpt-4o-realtime-preview-2024-12-17",
-          voice: "verse",
+          voice: "shimmer", 
+                  // "alloy", "coral", "sage", "shimmer",    Female
+                  //"ash", //"verse", // "ballad", "echo",   Male
         }),
       });
       const data = await r.json();
@@ -41,7 +54,7 @@
       }
 
       // -- get client secret --
-      const CLIENT_SECRET = await getEphemeralKey();
+      const CLIENT_SECRET = await getEphemeralKey(getApiKey());
       if (!CLIENT_SECRET) {
         console.error("Failed to get client secret");
         return;
@@ -91,6 +104,7 @@
       await peer.setRemoteDescription(answer);
       console.log("received answer:", answer);
 
+      setStatus("Connected");
       updateUI();
     }
 
@@ -106,40 +120,51 @@
         localStream = null;
       }
 
+      setStatus("Not connected");
       updateUI();
     }
+
+
+
 
     // --- UI ---
     function updateUI() {
       // if (CLIENT_SECRET) {
-      //   disableElement("setup_button");
+      //   disableElementById("setup_button");
       // } else {
-      //   enableElement("setup_button", true);
+      //   enableElementById("setup_button", true);
       // }
 
       if(peer) {
-        disableElement("connect_button");
-        enableElement("disconnect_button", true);
+        disableElementById("connect_button");
+        enableElementById("disconnect_button");
       } else {
-        enableElement("connect_button", true);
-        disableElement("disconnect_button");
+        enableElementById("connect_button");
+        disableElementById("disconnect_button");
       }
     }
 
-    function enableElement(id, enabled) {
-      const el = document.getElementById(id);
+    function setStatus(status) {
+      const el = document.getElementById("status_div");
       if (el) {
-        el.disabled = !enabled;
+        el.innerText = status;
       }
     }
 
-    function disableElement(id) {
-      enableElement(id, false);
+    function setKeyInput(key) {
+      const keyInput = document.getElementById('api_key_input');
+      keyInput.value = key;
+    }
+
+    function getApiKey() {
+      const keyInput = document.getElementById('api_key_input');
+      return keyInput.value || API_KEY;
     }
   </script>
 </head>
 <body>
-  <h2>RealtimeAPI trial</h2>
+  <h2>OpenAI RealtimeAPI trial with WebRTC</h2>
+  api key: <input type="text" size="20" id="api_key_input" /><br />
 
   <!--
   <button id="setup_button" onclick="setupClientSecret()">Setup Ephemeral Key</button><br />
@@ -147,8 +172,14 @@
 
   <button id="connect_button" onclick="connectRealtimeAPI()">Connect Realtime API</button>&nbsp;
   <button id="disconnect_button" onclick="disconnectRealtimeAPI()">Disconnect</button>
+  <div id="status_div">not connected</div>
 </body>
 <script>
+  // --- get API key from URL --
+  const queryKey = getParamFromQueryString('key');
+  setKeyInput(queryKey);
+
+  // --- update UI ---
   updateUI();
 </script>
 </html>
