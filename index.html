@@ -43,6 +43,7 @@
     let peer = null;
     let localStream = null;
     let dataChannel = null;
+    let timerId = null;
     // async function setupClientSecret() {
     //   CLIENT_SECRET = await getEphemeralKey();
     //   console.log("ephemeral key:", CLIENT_SECRET);
@@ -83,9 +84,13 @@
       dc.addEventListener("message", (e) => {
         // Realtime server events appear here!
         const realtimeEvent = JSON.parse(e.data);
-        //console.log(realtimeEvent);
+        console.log(realtimeEvent.type);
+        if (realtimeEvent.type === "input_audio_buffer.speech_started") {
+          updateSessionTimer();
+        }
         if (realtimeEvent.type === "response.done") {
           console.log("event:", realtimeEvent);
+          updateSessionTimer(); 
 
           if (realtimeEvent.response?.output[0]?.type === "function_call") {
             const func = realtimeEvent.response.output[0].name;
@@ -135,6 +140,7 @@
       console.log("received answer:", answer);
 
       setStatus("Connected");
+      updateSessionTimer();
       updateUI();
     }
 
@@ -181,6 +187,19 @@
         console.log("send config:", config);
         dataChannel.send(JSON.stringify(config));
       }
+    }
+
+    function updateSessionTimer() {
+      const TIMEOUT_SEC = 120;
+      console.log("update session timer");
+      if (timerId) {
+        clearTimeout(timerId);
+        timerId = null;
+      }
+      timerId = setTimeout(() => {
+        console.log("session timeout");
+        disconnectRealtimeAPI();
+      }, TIMEOUT_SEC * 1000); // miliseconds
     }
 
 
