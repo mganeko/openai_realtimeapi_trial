@@ -2,6 +2,9 @@
 <html>
 <head>
   <title>RealtimeAPI trial</title>
+  <!-- reference to the OpenAI realtime API
+    https://platform.openai.com/docs/guides/realtime-webrtc
+  -->
   <script src="env/config.js"></script>
   <script>
     async function getEphemeralKey() {
@@ -22,21 +25,25 @@
       return data?.client_secret?.value;
     }
 
-    let CLIENT_SECRET = null;
     let peer = null;
-    async function setupClientSecret() {
-      CLIENT_SECRET = await getEphemeralKey();
-      console.log("ephemeral key:", CLIENT_SECRET);
-    }
+    let localStream = null;
+    // async function setupClientSecret() {
+    //   CLIENT_SECRET = await getEphemeralKey();
+    //   console.log("ephemeral key:", CLIENT_SECRET);
+    //   updateUI();
+    // }
 
     async function connectRealtimeAPI() {
       // -- check --
-      if (!CLIENT_SECRET) {
-        console.error("Please setup client secret first");
-        return;
-      }
       if (peer) {
         console.error("Already connected");
+        return;
+      }
+
+      // -- get client secret --
+      const CLIENT_SECRET = await getEphemeralKey();
+      if (!CLIENT_SECRET) {
+        console.error("Failed to get client secret");
         return;
       }
 
@@ -49,7 +56,7 @@
       peer.ontrack = e => audioEl.srcObject = e.streams[0];
 
       // Add local audio track for microphone input in the browser
-      const localStream = await navigator.mediaDevices.getUserMedia({
+      localStream = await navigator.mediaDevices.getUserMedia({
         audio: true
       });
       peer.addTrack(localStream.getTracks()[0]);
@@ -83,16 +90,65 @@
       };
       await peer.setRemoteDescription(answer);
       console.log("received answer:", answer);
+
+      updateUI();
     }
 
-    
+    function disconnectRealtimeAPI() {
+      if (peer) {
+        peer.close();
+        peer = null;
+        CLIENT_SECRET = null;
+      }
+
+      if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+        localStream = null;
+      }
+
+      updateUI();
+    }
+
+    // --- UI ---
+    function updateUI() {
+      // if (CLIENT_SECRET) {
+      //   disableElement("setup_button");
+      // } else {
+      //   enableElement("setup_button", true);
+      // }
+
+      if(peer) {
+        disableElement("connect_button");
+        enableElement("disconnect_button", true);
+      } else {
+        enableElement("connect_button", true);
+        disableElement("disconnect_button");
+      }
+    }
+
+    function enableElement(id, enabled) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.disabled = !enabled;
+      }
+    }
+
+    function disableElement(id) {
+      enableElement(id, false);
+    }
   </script>
 </head>
 <body>
   <h2>RealtimeAPI trial</h2>
 
-  <button onclick="setupClientSecret()">Setup Ephemeral Key</button>&nbsp;
-  <button onclick="connectRealtimeAPI()">Connect Realtime API</button>
+  <!--
+  <button id="setup_button" onclick="setupClientSecret()">Setup Ephemeral Key</button><br />
+  -->
 
+  <button id="connect_button" onclick="connectRealtimeAPI()">Connect Realtime API</button>&nbsp;
+  <button id="disconnect_button" onclick="disconnectRealtimeAPI()">Disconnect</button>
 </body>
+<script>
+  updateUI();
+</script>
 </html>
