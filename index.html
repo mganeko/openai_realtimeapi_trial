@@ -13,7 +13,9 @@
     - [x] get API key from query parameter
     - [ ] add voice selection
     - [ ] add timeout for keeping connection
-    - [ ] add datachannel event handler
+    - [x] add datachannel event handler
+    - [x] update Session
+    - [x] quit by function calling (e.g. "quit" event)
    -->
   <script src="env/config.js"></script>
   <script src="js/ui_helper.js"></script>
@@ -40,6 +42,7 @@
 
     let peer = null;
     let localStream = null;
+    let dataChannel = null;
     // async function setupClientSecret() {
     //   CLIENT_SECRET = await getEphemeralKey();
     //   console.log("ephemeral key:", CLIENT_SECRET);
@@ -59,6 +62,7 @@
         console.error("Failed to get client secret");
         return;
       }
+      setStatus("Connecting...");
 
       // Create a peer connection
       peer = new RTCPeerConnection();
@@ -76,10 +80,36 @@
 
       // Set up data channel for sending and receiving events
       const dc = peer.createDataChannel("oai-events");
-      peer.addEventListener("message", (e) => {
+      dc.addEventListener("message", (e) => {
         // Realtime server events appear here!
-        console.log(e);
+        const realtimeEvent = JSON.parse(e.data);
+        //console.log(realtimeEvent);
+        if (realtimeEvent.type === "response.done") {
+          console.log("event:", realtimeEvent);
+
+          if (realtimeEvent.response?.output[0]?.type === "function_call") {
+            const func = realtimeEvent.response.output[0].name;
+            const args = realtimeEvent.response.output[0].arguments;
+            console.log("function call:", func, args);
+            if (func === "quit_conversation") {
+              disconnectRealtimeAPI();
+            }
+          }
+        }
       });
+      dc.onopen = () => {
+        console.log("Data channel opened");
+        dataChannel = dc;
+        updateSessionConfig();
+      };
+      dc.onclose = () => {
+        console.log("Data channel closed");
+        dataChannel = null;
+      };
+      dc.onerror = (e) => {
+        console.error("Data channel error:", e);
+      };
+
 
       // Start the session using the Session Description Protocol (SDP)
       const offer = await peer.createOffer();
@@ -112,7 +142,8 @@
       if (peer) {
         peer.close();
         peer = null;
-        CLIENT_SECRET = null;
+        //CLIENT_SECRET = null;
+        dataChannel = null;
       }
 
       if (localStream) {
@@ -124,7 +155,33 @@
       updateUI();
     }
 
+    function updateSessionConfig() {
+      // TODO
+      const config = {
+        "type": "session.update",
+        "session": {
+          "modalities": ["text", "audio"],
+          "instructions": "You are a helpful assistant. Please Answer in Japanese.",
+          "voice": "ash",
+          "temperature": 0.6,
+          "tools": [
+            {
+              "type": "function",
+              "name": "quit_conversation",
+              "description": "Quit current conversation and disconnect",
+              "parameters": {
+              }
+            }
+          ],
+          "tool_choice": "auto",
+        }
+      }
 
+      if (dataChannel) {
+        console.log("send config:", config);
+        dataChannel.send(JSON.stringify(config));
+      }
+    }
 
 
     // --- UI ---
