@@ -2,13 +2,13 @@
 <html>
 <head>
   <title>RealtimeAPI trial</title>
-  <script src="conf/config.js"></script>
+  <script src="env/config.js"></script>
   <script>
-    async function getEffemeralKey() {
+    async function getEphemeralKey() {
       const r = await fetch("https://api.openai.com/v1/realtime/sessions", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+          "Authorization": `Bearer ${API_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -17,12 +17,82 @@
         }),
       });
       const data = await r.json();
-      return data.key;
+      // console.log("get ephemeral:", data);
+      // console.log("ephemeral key:", data.client_secret);
+      return data?.client_secret?.value;
     }
+
+    let CLIENT_SECRET = null;
+    let peer = null;
+    async function setupClientSecret() {
+      CLIENT_SECRET = await getEphemeralKey();
+      console.log("ephemeral key:", CLIENT_SECRET);
+    }
+
+    async function connectRealtimeAPI() {
+      // -- check --
+      if (!CLIENT_SECRET) {
+        console.error("Please setup client secret first");
+        return;
+      }
+      if (peer) {
+        console.error("Already connected");
+        return;
+      }
+
+      // Create a peer connection
+      peer = new RTCPeerConnection();
+
+      // Set up to play remote audio from the model
+      const audioEl = document.createElement("audio");
+      audioEl.autoplay = true;
+      peer.ontrack = e => audioEl.srcObject = e.streams[0];
+
+      // Add local audio track for microphone input in the browser
+      const localStream = await navigator.mediaDevices.getUserMedia({
+        audio: true
+      });
+      peer.addTrack(localStream.getTracks()[0]);
+
+      // Set up data channel for sending and receiving events
+      const dc = peer.createDataChannel("oai-events");
+      peer.addEventListener("message", (e) => {
+        // Realtime server events appear here!
+        console.log(e);
+      });
+
+      // Start the session using the Session Description Protocol (SDP)
+      const offer = await peer.createOffer();
+      await peer.setLocalDescription(offer);
+      console.log("sending offer:", offer);
+
+      const baseUrl = "https://api.openai.com/v1/realtime";
+      const model = "gpt-4o-realtime-preview-2024-12-17";
+      const sdpResponse = await fetch(`${baseUrl}?model=${model}`, {
+        method: "POST",
+        body: offer.sdp,
+        headers: {
+          Authorization: `Bearer ${CLIENT_SECRET}`,
+          "Content-Type": "application/sdp"
+        },
+      });
+
+      const answer = {
+        type: "answer",
+        sdp: await sdpResponse.text(),
+      };
+      await peer.setRemoteDescription(answer);
+      console.log("received answer:", answer);
+    }
+
+    
   </script>
 </head>
 <body>
   <h2>RealtimeAPI trial</h2>
+
+  <button onclick="setupClientSecret()">Setup Ephemeral Key</button>&nbsp;
+  <button onclick="connectRealtimeAPI()">Connect Realtime API</button>
 
 </body>
 </html>
