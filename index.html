@@ -16,6 +16,7 @@
     - [x] add datachannel event handler
     - [x] update Session
     - [x] quit by function calling (e.g. "quit" event)
+    - [ ] close session with WHIP style (use DELETE)
    -->
   <script src="env/config.js"></script>
   <script src="js/ui_helper.js"></script>
@@ -246,8 +247,8 @@
   <button id="setup_button" onclick="setupClientSecret()">Setup Ephemeral Key</button><br />
   -->
 
-  <button id="connect_button" onclick="connectRealtimeAPI()">Connect Realtime API</button>&nbsp;
-  <button id="disconnect_button" onclick="disconnectRealtimeAPI()">Disconnect</button>
+  <button id="connect_button" onclick="connectRealtimeAPI()">Start</button>&nbsp;
+  <button id="disconnect_button" onclick="disconnectRealtimeAPI()">Stop</button>
   <div id="status_div">not connected</div>
 </body>
 <script>
