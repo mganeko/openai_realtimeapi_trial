@@ -12,11 +12,11 @@
     - [x] add API key input
     - [x] get API key from query parameter
     - [ ] add voice selection
-    - [ ] add timeout for keeping connection
+    - [x] add timeout for keeping connection
     - [x] add datachannel event handler
     - [x] update Session
     - [x] quit by function calling (e.g. "quit" event)
-    - [ ] close session with WHIP style (use DELETE)
+    - [-] close session with WHIP style (use DELETE) -> NO location header
    -->
   <script src="env/config.js"></script>
   <script src="js/ui_helper.js"></script>
@@ -82,6 +82,8 @@
 
       // Set up data channel for sending and receiving events
       const dc = peer.createDataChannel("oai-events");
+      setupDataChannel(dc);
+      /*
       dc.addEventListener("message", (e) => {
         // Realtime server events appear here!
         const realtimeEvent = JSON.parse(e.data);
@@ -115,6 +117,7 @@
       dc.onerror = (e) => {
         console.error("Data channel error:", e);
       };
+      */
 
 
       // Start the session using the Session Description Protocol (SDP)
@@ -132,6 +135,7 @@
           "Content-Type": "application/sdp"
         },
       });
+      //console.log("sdp response header:", sdpResponse.headers); // NO location header
 
       const answer = {
         type: "answer",
@@ -143,6 +147,42 @@
       setStatus("Connected");
       updateSessionTimer();
       updateUI();
+    }
+
+    function setupDataChannel(dc) {
+      dc.addEventListener("message", (e) => {
+        // Realtime server events appear here!
+        const realtimeEvent = JSON.parse(e.data);
+        console.log(realtimeEvent.type);
+        if (realtimeEvent.type === "input_audio_buffer.speech_started") {
+          updateSessionTimer();
+        }
+        if (realtimeEvent.type === "response.done") {
+          console.log("event:", realtimeEvent);
+          updateSessionTimer(); 
+
+          if (realtimeEvent.response?.output[0]?.type === "function_call") {
+            const func = realtimeEvent.response.output[0].name;
+            const args = realtimeEvent.response.output[0].arguments;
+            console.log("function call:", func, args);
+            if (func === "quit_conversation") {
+              disconnectRealtimeAPI();
+            }
+          }
+        }
+      });
+      dc.onopen = () => {
+        console.log("Data channel opened");
+        dataChannel = dc;
+        updateSessionConfig();
+      };
+      dc.onclose = () => {
+        console.log("Data channel closed");
+        dataChannel = null;
+      };
+      dc.onerror = (e) => {
+        console.error("Data channel error:", e);
+      };
     }
 
     function disconnectRealtimeAPI() {
