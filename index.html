@@ -29,7 +29,8 @@
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gpt-4o-realtime-preview-2024-12-17",
+          //model: "gpt-4o-realtime-preview-2024-12-17",
+          model: "gpt-4o-realtime-preview-2025-06-03",
           voice: "shimmer", 
                   // "alloy", "coral", "sage", "shimmer",    Female
                   //"ash", //"verse", // "ballad", "echo",   Male
@@ -83,42 +84,6 @@
       // Set up data channel for sending and receiving events
       const dc = peer.createDataChannel("oai-events");
       setupDataChannel(dc);
-      /*
-      dc.addEventListener("message", (e) => {
-        // Realtime server events appear here!
-        const realtimeEvent = JSON.parse(e.data);
-        console.log(realtimeEvent.type);
-        if (realtimeEvent.type === "input_audio_buffer.speech_started") {
-          updateSessionTimer();
-        }
-        if (realtimeEvent.type === "response.done") {
-          console.log("event:", realtimeEvent);
-          updateSessionTimer(); 
-
-          if (realtimeEvent.response?.output[0]?.type === "function_call") {
-            const func = realtimeEvent.response.output[0].name;
-            const args = realtimeEvent.response.output[0].arguments;
-            console.log("function call:", func, args);
-            if (func === "quit_conversation") {
-              disconnectRealtimeAPI();
-            }
-          }
-        }
-      });
-      dc.onopen = () => {
-        console.log("Data channel opened");
-        dataChannel = dc;
-        updateSessionConfig();
-      };
-      dc.onclose = () => {
-        console.log("Data channel closed");
-        dataChannel = null;
-      };
-      dc.onerror = (e) => {
-        console.error("Data channel error:", e);
-      };
-      */
-
 
       // Start the session using the Session Description Protocol (SDP)
       const offer = await peer.createOffer();
@@ -126,7 +91,8 @@
       console.log("sending offer:", offer);
 
       const baseUrl = "https://api.openai.com/v1/realtime";
-      const model = "gpt-4o-realtime-preview-2024-12-17";
+      //const model = "gpt-4o-realtime-preview-2024-12-17";
+      const model = "gpt-4o-realtime-preview-2025-06-03"
       const sdpResponse = await fetch(`${baseUrl}?model=${model}`, {
         method: "POST",
         body: offer.sdp,
