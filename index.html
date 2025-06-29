@@ -209,6 +209,36 @@
       }, TIMEOUT_SEC * 1000); // miliseconds
     }
 
+    // --- Function calling result (NOT TESTED YET) ---
+    function sendResultOfFunctionCall(dc, id, result) {
+      if (!dc) {
+        console.error("Data channel is not open");
+        return;
+      }
+      const message =     {
+        "type": "conversation.item.create",
+        "item": {
+          "type": "function_call_output",
+          "call_id": id,
+          "output": result
+        }
+      }
+
+      console.log("send function call result:", message);
+      dc.send(JSON.stringify(message));
+    }
+
+    /* Example of sending function call result
+    {
+      "type": "conversation.item.create",
+      "item": {
+        "type": "function_call_output",
+        "call_id": "call_sHlR7iaFwQ2YQOqm",
+        "output": "{\"horoscope\": \"You will soon meet a new friend.\"}"
+      }
+    }
+    */
+
 
     // --- UI ---
     function updateUI() {
